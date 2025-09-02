@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pixel Maze Game</title>
+<style>
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: "Press Start 2P", monospace;
+    color: #fff;
+  }
+
+  #gameContainer {
+    background: #ffdde1;
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+    width: 480px;
+  }
+
+  h1 {
+    margin: 5px 0;
+    font-size: 18px;
+    color: #000;
+  }
+
+  #maze {
+    position: relative;
+    margin: 20px auto;
+    width: 400px;
+    height: 400px;
+    background: #e63946;
+    border: 4px solid #000;
+    box-shadow: inset 0 0 10px #000;
+  }
+
+  .chippoy {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: url("https://i.ibb.co/0JmWnZL/chip.png") no-repeat center/cover;
+    image-rendering: pixelated;
+    left: 10px;
+    top: 10px;
+    z-index: 10;
+  }
+
+  .finishZone {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: url("https://i.ibb.co/qd5Bz0h/goal.png") no-repeat center/cover;
+    image-rendering: pixelated;
+    right: 10px;
+    bottom: 10px;
+    z-index: 5;
+  }
+
+  .wall {
+    position: absolute;
+    background: #000;
+    width: 40px;
+    height: 40px;
+    image-rendering: pixelated;
+  }
+
+  /* Controls */
+  #controls {
+    margin-top: 15px;
+  }
+
+  .btn {
+    display: inline-block;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 50%;
+    background: #1d3557;
+    color: #fff;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 2px 2px #000;
+  }
+
+  .btn:active {
+    transform: scale(0.9);
+  }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <h1>Pixel Maze</h1>
+  <p>Help Chippoy reach the goal!</p>
+
+  <div id="maze">
+    <div class="chippoy" id="chippoy"></div>
+    <div class="finishZone" id="finish"></div>
+
+    <!-- Maze Walls (sample layout) -->
+    <div class="wall" style="left: 40px; top: 0; height: 120px;"></div>
+    <div class="wall" style="left: 120px; top: 80px; width: 160px; height: 40px;"></div>
+    <div class="wall" style="left: 200px; top: 0; height: 120px;"></div>
+    <div class="wall" style="left: 280px; top: 120px; width: 40px; height: 160px;"></div>
+    <div class="wall" style="left: 80px; top: 200px; width: 160px; height: 40px;"></div>
+    <div class="wall" style="left: 40px; top: 280px; width: 200px; height: 40px;"></div>
+    <div class="wall" style="left: 240px; top: 320px; width: 120px; height: 40px;"></div>
+    <div class="wall" style="left: 320px; top: 40px; height: 160px; width: 40px;"></div>
+  </div>
+
+  <div id="controls">
+    <div>
+      <button class="btn" onclick="move(0,-10)">⬆️</button>
+    </div>
+    <div>
+      <button class="btn" onclick="move(-10,0)">⬅️</button>
+      <button class="btn" onclick="move(10,0)">➡️</button>
+    </div>
+    <div>
+      <button class="btn" onclick="move(0,10)">⬇️</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const chippoy = document.getElementById("chippoy");
+  const finish = document.getElementById("finish");
+  const maze = document.getElementById("maze");
+  const walls = document.querySelectorAll(".wall");
+
+  function move(dx, dy) {
+    const chRect = chippoy.getBoundingClientRect();
+    const mazeRect = maze.getBoundingClientRect();
+
+    let newLeft = chippoy.offsetLeft + dx;
+    let newTop = chippoy.offsetTop + dy;
+
+    // Stay inside maze
+    if (newLeft < 0 || newTop < 0 ||
+        newLeft + chippoy.offsetWidth > maze.offsetWidth ||
+        newTop + chippoy.offsetHeight > maze.offsetHeight) {
+      return;
+    }
+
+    chippoy.style.left = newLeft + "px";
+    chippoy.style.top = newTop + "px";
+
+    // Check collisions with walls
+    for (let wall of walls) {
+      if (isColliding(chippoy, wall)) {
+        chippoy.style.left = chRect.left - mazeRect.left + "px";
+        chippoy.style.top = chRect.top - mazeRect.top + "px";
+        return;
+      }
+    }
+
+    // Check finish
+    if (isColliding(chippoy, finish)) {
+      alert("🎉 You made it! Chippoy reached the goal!");
+    }
+  }
+
+  function isColliding(a, b) {
+    const aRect = a.getBoundingClientRect();
+    const bRect = b.getBoundingClientRect();
+
+    return !(
+      aRect.top > bRect.bottom ||
+      aRect.bottom < bRect.top ||
+      aRect.right < bRect.left ||
+      aRect.left > bRect.right
+    );
+  }
+
+  // Keyboard controls
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp") move(0, -10);
+    if (e.key === "ArrowDown") move(0, 10);
+    if (e.key === "ArrowLeft") move(-10, 0);
+    if (e.key === "ArrowRight") move(10, 0);
+  });
+</script>
+</body>
+</html>
