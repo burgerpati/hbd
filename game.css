@@ -123,12 +123,7 @@ body {
 }
 
 .sab { height: 4rem; width: 4rem; top: 360px; left: 60px; }
-.isha {
-  position: absolute;
-  top: 40%;
-  left: 60%;
-  transform: translate(-50%, -50%);
-}
+.isha { height: 4rem; width: 4rem; top: 348px; right: 40px; }
 
 
 .sabStand, .giveRose {
