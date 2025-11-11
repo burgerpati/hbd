@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PIXEL QUEST — Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07060a;
+  --frame-red:#ff2f2f;
+  --neon-yellow:#ffd76b;
+  --neon-blue:#48b3ff;
+  --gb0:#0f380f; /* gameboy style 4-color (darkest) */
+  --gb1:#306230;
+  --gb2:#8bac0f;
+  --gb3:#9bbc0f; /* lightest */
+}
+
+*{box-sizing:border-box}
+html,body{height:100%; margin:0; background: radial-gradient(circle at 10% 10%, rgba(72,179,255,0.02), transparent 6%), var(--bg); font-family:"Press Start 2P",monospace; color:#fff; -webkit-font-smoothing:none;}
+.center{
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:18px;
+}
+
+/* Cabinet outer */
+.cabinet{
+  width:920px; max-width:98vw; aspect-ratio: 9/16;
+  background: linear-gradient(180deg,#14060a,#20040a);
+  border-radius:14px; padding:18px; position:relative; border:8px solid rgba(255,47,47,0.9);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  transform-origin:center center;
+}
+
+/* marquee and screen */
+.marquee{height:56px; display:flex;align-items:center;justify-content:center;color:var(--neon-yellow); font-size:14px; text-shadow:0 0 8px rgba(255,202,44,0.9)}
+.screen-wrap{margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:12px; height:calc(100% - 140px);}
+.screen{
+  width:86%; flex:1; background:linear-gradient(180deg,#02141f,#021018); border-radius:8px; padding:12px; position:relative; overflow:hidden; border:6px solid rgba(255,80,80,0.04);
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* title-style */
+.top-text{color:var(--neon-yellow); text-shadow:0 0 8px rgba(255,202,44,0.9); font-size:14px}
+.press{color:var(--neon-blue); font-size:10px; margin-bottom:6px}
+.title{font-size:48px; line-height:0.9; color:var(--neon-yellow); text-shadow:0 0 18px rgba(255,215,110,0.9); margin-top:6px; text-align:center;}
+
+/* game area (pixel canvas) */
+.game-area{
+  width:320px; height:288px; /* 160x144 scaled by 2 for crisp */
+  image-rendering: pixelated;
+  background: linear-gradient(#0b2b17,#052116);
+  border:4px solid rgba(0,0,0,0.6);
+  margin-top:10px;
+  position:relative;
+}
+
+/* controls area */
+.controls{width:86%; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
+.joystick{width:140px; height:86px; background:linear-gradient(#12060a,#2b0a0f); border-radius:8px; display:flex; align-items:center; justify-content:center; border:4px solid rgba(255,47,47,0.06)}
+.buttons{display:flex; gap:12px}
+.btn{width:48px;height:48px;border-radius:50%;box-shadow:0 6px 0 rgba(0,0,0,0.55)}
+
+/* dialogue box */
+.dialogue{
+  position:absolute; left:50%; transform:translateX(-50%); bottom:14px; width:76%; padding:10px; background:rgba(0,0,0,0.85);
+  border:4px solid rgba(255,255,255,0.05); color:#cfe; font-size:10px; display:none; z-index:50; border-radius:6px;
+}
+
+/* HUD small */
+.hud{position:absolute; top:10px; left:8px; font-size:9px; color:#9ffc9f; text-shadow:0 0 6px rgba(0,255,120,0.08)}
+
+/* download sprite buttons */
+.sprite-exports{position:absolute; right:8px; top:8px; display:flex; flex-direction:column; gap:6px; z-index:60}
+.export-btn{background:rgba(255,255,255,0.06); border:2px solid rgba(255,255,255,0.02); color:#fff; padding:6px 8px; font-size:9px; border-radius:6px; cursor:pointer}
+
+/* small responsive */
+@media(max-width:600px){
+  .title{font-size:34px}
+  .game-area{width:240px;height:216px}
+  .cabinet{padding:10px}
+}
+
+/* tiny pixel sprite preview */
+.sprite-preview{width:80px;height:80px; background:#041; border:3px solid rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; margin-left:8px; image-rendering:pixelated}
+.legend{font-size:10px; color:#ddd}
+</style>
+</head>
+<body>
+<div class="center">
+  <div class="cabinet" id="cabinet">
+    <div class="marquee">HI SCORE · pixel studios</div>
+
+    <div class="screen-wrap">
+      <div class="screen" id="screen">
+        <div class="top-text">HI SCORE</div>
+        <div id="press" class="press">PRESS START</div>
+        <div class="title">PIXEL<br>QUEST</div>
+
+        <!-- Game area (the pixel canvas) -->
+        <div class="game-area" id="gameArea" style="display:flex; align-items:center; justify-content:center;">
+          <canvas id="gameCanvas" width="160" height="144" style="width:320px;height:288px;"></canvas>
+          <div class="dialogue" id="dialogue"></div>
+          <div class="hud" id="hud">MAP: Demo Village</div>
+          <div class="sprite-exports">
+            <button class="export-btn" id="exportPlayer">Download Player</button>
+            <button class="export-btn" id="exportNPC">Download NPC</button>
+            <button class="export-btn" id="exportGhost">Download Ghost</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; margin-top:6px;">
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="legend">Controls</div>
+            <div style="font-size:10px; color:#ddd">Arrows = Move • Z = Talk/Use</div>
+          </div>
+
+          <div class="sprite-preview" id="previewPlayer" title="player preview"></div>
+          <div class="sprite-preview" id="previewNPC" title="npc preview"></div>
+          <div class="sprite-preview" id="previewGhost" title="ghost preview"></div>
+        </div>
+
+      </div>
+
+      <div class="controls">
+        <div class="joystick"><div style="width:28px;height:28px;border-radius:50%; background:linear-gradient(#ff3b3b,#d32121); box-shadow:0 6px 0 rgba(0,0,0,0.6)"></div></div>
+        <div class="buttons"><div class="btn" style="background:linear-gradient(#ffd76b,#ffb71b)"></div><div class="btn" style="background:linear-gradient(#48b3ff,#2088ff)"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  PIXEL QUEST — single-file demo
+  Features:
+  - Title look + pixel canvas (160x144)
+  - 16x16 tilemap (tiles are 16px), small demo map
+  - Player movement with arrow keys
+  - Collision for 'wall' tiles
+  - NPC with dialogue (press Z to talk)
+  - Collectible 'Magic Leaf' ends demo
+  - Sprite generator + download buttons (create 16x16 PNGs from in-memory sprite data)
+*/
+
+/* ---------------- Settings & Palette ---------------- */
+const PALETTE_GB = ['#0f380f','#306230','#8bac0f','#9bbc0f']; // 4-color Game Boy-like
+const SCALE = 2; // on-screen scale used in CSS; canvas internal is 160x144
+const TILE = 16;
+const CANVAS_W = 160;
+const CANVAS_H = 144;
+
+/* ---------------- Sprites (16x16 grid arrays) ----------------
+   We'll define small binary maps where each cell is 0..3 referencing palette index.
+   Player: simple 3-color character (background=0)
+   NPC: single color
+   Ghost: two-tone
+*/
+
+function makeEmptySprite() {
+  const arr = [];
+  for(let y=0;y<16;y++){ arr[y]=new Array(16).fill(0); }
+  return arr;
+}
+
+/* PLAYER sprite (front-facing) */
+const SPR_PLAYER = makeEmptySprite();
+// draw a simple head/body using palette indices 1..3
+(function(){
+  const p = SPR_PLAYER;
+  // fill body (middle)
+  for(let y=4;y<13;y++){
+    for(let x=4;x<12;x++){
+      p[y][x] = (y<6?3:2);
+    }
+  }
+  // eyes (darker background)
+  p[6][6] = 0; p[6][9] = 0;
+  p[7][6] = 1; p[7][9] = 1;
+  // shoes
+  for(let x=5;x<7;x++) p[13][x]=1;
+  for(let x=9;x<11;x++) p[13][x]=1;
+})();
+
+/* NPC sprite */
+const SPR_NPC = makeEmptySprite();
+(function(){
+  const p = SPR_NPC;
+  for(let y=3;y<13;y++){
+    for(let x=4;x<12;x++){
+      p[y][x] = (y<7?2:1);
+    }
+  }
+  p[6][6]=0; p[6][9]=0; // eyes
+})();
+
+/* GHOST sprite */
+const SPR_GHOST = makeEmptySprite();
+(function(){
+  const p = SPR_GHOST;
+  // square ghost top
+  for(let y=2;y<11;y++){
+    for(let x=3;x<13;x++){
+      p[y][x] = (y<7?3:2);
+    }
+  }
+  // 'feet' bits
+  p[11][4]=2; p[11][6]=2; p[11][8]=2; p[11][10]=2;
+  // eyes
+  p[5][6]=0; p[5][9]=0;
+  p[6][6]=1; p[6][9]=1;
+})();
+
+/* ---------------- Tilemap ----------------
+   We'll create a small 10x9 map (tiles 16px each; canvas 160x144 => 10x9 tiles)
+   Tile types: 0 = grass (walkable), 1 = path (walkable), 2 = wall/tree (blocked), 3 = house floor
+*/
+const MAP_W = 10, MAP_H = 9;
+const MAP = [
+ // 10 columns each row
+ [2,2,2,2,2,2,2,2,2,2],
+ [2,1,1,1,1,1,1,1,1,2],
+ [2,1,0,0,0,0,0,0,1,2],
+ [2,1,0,0,3,3,0,0,1,2],
+ [2,1,0,0,3,3,0,0,1,2],
+ [2,1,0,0,0,0,0,0,1,2],
+ [2,1,0,0,0,0,0,0,1,2],
+ [2,1,1,1,1,1,1,1,1,2],
+ [2,2,2,2,2,2,2,2,2,2],
+];
+
+const TILE_COLORS = {
+  0: '#2b7b2b', // grass
+  1: '#cdbb7a', // path
+  2: '#154215', // wall/tree (dark)
+  3: '#7f3f1a'  // house floor
+};
+
+/* ---------------- Entities initial positions ---------------- */
+let player = {x:4, y:4}; // tile coords
+const npc = {x:6, y:3, dialog:["Hello, traveler!","Find the Magic Leaf in the north." ]};
+const ghost = {x:2.5,y:2.5,dir:1};
+let item = {x:3, y:2, name:"Magic Leaf", taken:false};
+
+/* ---------------- Canvas & rendering ---------------- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* draw tilemap */
+function drawMap(){
+  for(let y=0;y<MAP_H;y++){
+    for(let x=0;x<MAP_W;x++){
+      const t = MAP[y][x];
+      ctx.fillStyle = TILE_COLORS[t];
+      ctx.fillRect(x*TILE/1, y*TILE/1, TILE, TILE);
+      // optional tile grid (subtle)
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+      ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
+    }
+  }
+}
+
+/* draw sprite helper: draws 16x16 sprite array at pixel position px,py */
+function drawSpriteArray(arr, px, py){
+  for(let sy=0;sy<16;sy++){
+    for(let sx=0;sx<16;sx++){
+      const v = arr[sy][sx];
+      const color = PALETTE_GB[v] || '#000';
+      if(v===0) {
+        // treat 0 as transparent (don't draw)
+        continue;
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(px + sx, py + sy, 1, 1);
+    }
+  }
+}
+
+/* draw scaled entities (we use 1 canvas pixel = 1 in sprite). We'll place sprites centered on tile. */
+function render(){
+  // clear
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+  // draw map
+  drawMap();
+  // draw item if not taken
+  if(!item.taken){
+    // simple small leaf: draw a 8x8 square using PALETTE
+    ctx.fillStyle = PALETTE_GB[3];
+    ctx.fillRect(item.x*TILE + 6, item.y*TILE + 6, 4,4);
+    ctx.fillStyle = PALETTE_GB[2];
+    ctx.fillRect(item.x*TILE + 5, item.y*TILE + 5, 2,2);
+  }
+  // draw NPC (convert tile coords to pixel, offset so sprite centers)
+  drawSpriteArray(SPR_NPC, Math.round(npc.x*TILE + (TILE-16)/2), Math.round(npc.y*TILE + (TILE-16)/2));
+  // draw ghost (floating)
+  const gpx = Math.floor((ghost.x)*TILE + (TILE-16)/2);
+  const gpy = Math.floor((ghost.y)*TILE + (TILE-16)/2 - Math.sin(performance.now()/400)*4);
+  drawSpriteArray(SPR_GHOST, gpx, gpy);
+  // draw player on top
+  drawSpriteArray(SPR_PLAYER, Math.round(player.x*TILE + (TILE-16)/2), Math.round(player.y*TILE + (TILE-16)/2));
+}
+
+/* animation loop */
+let last = 0;
+function loop(t){
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------------- Input & movement ---------------- */
+const keys = {};
+window.addEventListener('keydown', e=>{
+  keys[e.key] = true;
+  // prevent scrolling with arrows
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ keys[e.key]=false; });
+
+let canMove = true;
+const moveDelay = 140; // ms between tile steps
+function tryMove(dx,dy){
+  if(!canMove) return;
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  if(nx<0||nx>=MAP_W||ny<0||ny>=MAP_H) return;
+  // collision with tile type 2
+  if(MAP[ny][nx]===2) return;
+  // move
+  player.x = nx; player.y = ny;
+  canMove = false;
+  setTimeout(()=>canMove=true, moveDelay);
+}
+
+/* interaction: check tile in front of player for NPC or item */
+function interact(){
+  // player facing? We'll just check same tile for simplicity and adjacent tiles
+  const checks = [
+    [0,0],
+    [0,-1],
+    [0,1],
+    [-1,0],
+    [1,0]
+  ];
+  // check NPC collision
+  for(const [dx,dy] of checks){
+    if(player.x+dx === npc.x && player.y+dy === npc.y){
+      showDialogue(npc.dialog.slice());
+      return;
+    }
+  }
+  // check item
+  if(!item.taken && player.x === item.x && player.y === item.y){
+    item.taken = true;
+    showDialogue([`You found the ${item.name}!`, `Demo complete — thanks for playing!`], ()=>{ endDemo(); });
+    return;
+  }
+}
+
+/* check inputs at interval for smooth tile moves */
+setInterval(()=>{
+  if(keys['ArrowUp']) tryMove(0,-1);
+  else if(keys['ArrowDown']) tryMove(0,1);
+  else if(keys['ArrowLeft']) tryMove(-1,0);
+  else if(keys['ArrowRight']) tryMove(1,0);
+
+  if(keys['z'] || keys['Z'] || keys['Enter']) {
+    // avoid holding activation
+    if(!keys._pressedZ){
+      keys._pressedZ = true;
+      interact();
+    }
+  } else {
+    keys._pressedZ = false;
+  }
+}, 60);
+
+/* ---------------- Dialogue box ---------------- */
+const dialogueEl = document.getElementById('dialogue');
+let dlgQueue = [];
+let dlgCallback = null;
+function showDialogue(lines, cb){
+  dlgQueue = lines || [];
+  dlgCallback = cb || null;
+  dialogueEl.style.display = 'block';
+  dialogueEl.innerText = dlgQueue.shift() || '';
+  // advance on Z or Enter
+  function advanceHandler(e){
+    if(e.key==='z' || e.key==='Z' || e.key==='Enter'){
+      if(dlgQueue.length>0){
+        dialogueEl.innerText = dlgQueue.shift();
+      } else {
+        dialogueEl.style.display = 'none';
+        window.removeEventListener('keydown', advanceHandler);
+        if(dlgCallback) dlgCallback();
+      }
+    }
+  }
+  window.addEventListener('keydown', advanceHandler);
+}
+
+/* ---------------- End of demo behavior ---------------- */
+function endDemo(){
+  // show big message overlay
+  dialogueEl.style.display = 'block';
+  dialogueEl.innerText = "DEMO COMPLETE!\nThanks for playing.";
+  // Flash title 'PRESS START' again
+  document.getElementById('press').innerText = "PLAY AGAIN";
+}
+
+/* ---------------- Sprite export / preview generation ---------------- */
+/* draw sprite array to an offscreen canvas and return dataURL */
+function spriteToDataURL(arr, scale=8){
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 16;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0,0,16,16);
+  for(let y=0;y<16;y++){
+    for(let x=0;x<16;x++){
+      const v = arr[y][x];
+      if(v===0) continue;
+      g.fillStyle = PALETTE_GB[v];
+      g.fillRect(x,y,1,1);
+    }
+  }
+  // scaled canvas for download
+  const cs = document.createElement('canvas');
+  cs.width = 16*scale; cs.height = 16*scale;
+  const gs = cs.getContext('2d');
+  gs.imageSmoothingEnabled = false;
+  gs.drawImage(c, 0,0, cs.width, cs.height);
+  return cs.toDataURL('image/png');
+}
+
+function setPreview(id, arr){
+  const el = document.getElementById(id);
+  el.style.backgroundImage = `url(${spriteToDataURL(arr,5)})`;
+  el.style.backgroundSize = 'cover';
+}
+
+/* attach export buttons */
+document.getElementById('exportPlayer').addEventListener('click', ()=>{
+  const url = spriteToDataURL(SPR_PLAYER,10);
+  downloadDataURL(url, 'player-16x16.png');
+});
+document.getElementById('exportNPC').addEventListener('click', ()=>{
+  const url = spriteToDataURL(SPR_NPC,10);
+  downloadDataURL(url, 'npc-16x16.png');
+});
+document.getElementById('exportGhost').addEventListener('click', ()=>{
+  const url = spriteToDataURL(SPR_GHOST,10);
+  downloadDataURL(url, 'ghost-16x16.png');
+});
+
+function downloadDataURL(dataurl, filename){
+  const a = document.createElement('a');
+  a.href = dataurl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* set initial previews */
+setPreview('previewPlayer', SPR_PLAYER);
+setPreview('previewNPC', SPR_NPC);
+setPreview('previewGhost', SPR_GHOST);
+
+/* ---------------- Title screen interactivity (press start) ---------------- */
+const pressEl = document.getElementById('press');
+let started = false;
+pressEl.addEventListener('click', startGame);
+document.addEventListener('keydown', (e)=>{
+  if(!started && (e.key==='Enter' || e.key==='z' || e.key==='Z')) startGame();
+});
+
+/* blink press */
+setInterval(()=>{ pressEl.classList.toggle('hidden'); pressEl.style.opacity = pressEl.style.opacity==='0.2' ? '1':'0.2'; }, 600);
+
+function startGame(){
+  if(started) return;
+  started = true;
+  pressEl.style.display = 'none';
+  // small transition: fade title up
+  const title = document.querySelector('.title');
+  title.style.transition = 'transform 0.6s ease, opacity 0.6s';
+  title.style.transform = 'translateY(-20px) scale(0.9)';
+  title.style.opacity = '0.7';
+  // show a short intro dialog
+  setTimeout(()=> showDialogue(["Welcome to Pixel Quest!","Press Z to interact."]), 700);
+}
+
+/* small parallax on cabinet for style */
+const cabinet = document.getElementById('cabinet');
+cabinet.addEventListener('mousemove', e=>{
+  const r = cabinet.getBoundingClientRect();
+  const cx = r.left + r.width/2;
+  const cy = r.top + r.height/2;
+  const dx = (e.clientX - cx) / r.width;
+  const dy = (e.clientY - cy) / r.height;
+  cabinet.style.transform = `perspective(900px) rotateY(${dx*3}deg) rotateX(${ -dy*3 }deg)`;
+});
+cabinet.addEventListener('mouseleave', ()=> cabinet.style.transform = 'none');
+
+/* ghost wandering simple AI */
+setInterval(()=> {
+  ghost.x += (Math.random()-0.5)*0.4;
+  ghost.y += (Math.random()-0.5)*0.4;
+  if(ghost.x<1) ghost.x=1;
+  if(ghost.y<1) ghost.y=1;
+  if(ghost.x>MAP_W-2) ghost.x=MAP_W-2;
+  if(ghost.y>MAP_H-2) ghost.y=MAP_H-2;
+}, 700);
+
+/* initial render call already started by loop */
+</script>
+</body>
+</html>
